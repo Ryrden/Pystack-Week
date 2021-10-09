@@ -5,12 +5,12 @@ from .models import Usuario
 from django.shortcuts import redirect
 import hashlib
 
+
 def cadastro(request):
+    if request.session.get('usuario'):
+        return redirect('/home/')
     status = request.GET.get('status')
     return render(request, 'cadastro.html', {'status': status})
-
-def login(request):
-    return render(request, 'login.html')
 
 def valida_cadastro(request):
     nome = request.POST.get('nome')
@@ -27,8 +27,9 @@ def valida_cadastro(request):
 
     if len(usuario_existe) > 0:
         return redirect('/auth/cadastro?status=3')
+
     try:
-        senha = hashlib.sha256(senha.encode()).hexdigest
+        senha = hashlib.sha256(senha.encode()).hexdigest()
         usuario = Usuario(nome=nome,
                           senha=senha,
                           email=email)
@@ -36,3 +37,28 @@ def valida_cadastro(request):
         return redirect('/auth/cadastro?status=0')
     except:
         return HttpResponse('ERRO INTERNO DO SISTEMA, TENTE NOVAMENTE EM INSTANTES')
+
+def login(request):
+    if request.session.get('usuario'):
+        return redirect('/home/')
+    status = request.GET.get('status')
+    return render(request, 'login.html', {'status': status})
+
+def valida_login(request):
+    email = request.POST.get('email')
+    senha = request.POST.get('senha')
+    senha = hashlib.sha256(senha.encode()).hexdigest()
+    usuarios = Usuario.objects.filter(email = email).filter(senha = senha)
+
+    if not len(usuarios):
+        return redirect('/auth/login?status=1')
+    elif len(usuarios):
+        request.session['usuario'] = usuarios[0].id
+        return redirect('/home/')
+    
+
+def sair(request):
+    #outra forma de deslogar
+    #request.session['usuario'] = None;
+    request.session.flush()
+    return redirect('/auth/login/')
